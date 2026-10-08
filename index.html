@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>时间侦探 · 疑案时序 | 方向二</title>
+<style>
+:root{
+  --paper:#fdf6e6; --ink:#3a3226; --soft:#8a7a5f;
+  --line:#c9b896; --accent:#b96a2f; --ok:#3f7d3a; --bad:#c24a3a;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(circle at 20% 15%, #fff9 0, transparent 32%),
+    var(--paper);
+  color:var(--ink); font-family:"KaiTi","楷体","Microsoft YaHei",system-ui,sans-serif;
+  display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px;
+}
+.wrap{width:min(720px,100%)}
+.top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px}
+h1{font-size:26px; font-weight:700}
+h1 em{font-style:italic; color:var(--accent)}
+.hud{font-size:14px; color:var(--soft); display:flex; gap:16px}
+.hud b{color:var(--ink)}
+.track{position:relative; height:34px; margin:8px 0 22px}
+.track .rail{position:absolute; left:0; right:0; top:15px; border-top:3px dotted var(--line)}
+.track .fill{position:absolute; left:0; top:15px; height:3px; width:0%; background:var(--accent); transition:width .5s}
+.track .dot{position:absolute; top:6px; width:18px;height:18px;border-radius:50%;
+  background:var(--paper); border:3px solid var(--line); transition:.3s}
+.track .dot.on{background:var(--accent); border-color:var(--accent)}
+.case{background:#fffdf5; border:1px solid var(--line); border-radius:16px; padding:26px 26px 20px;
+  box-shadow:0 12px 30px -20px rgba(60,44,20,.4), 0 0 0 6px rgba(201,184,150,.18)}
+.case h2{font-size:20px; margin-bottom:4px}
+.case .hint{font-size:13.5px; color:var(--soft); margin-bottom:14px; line-height:1.6}
+.timeline{min-height:46px; background:repeating-linear-gradient(0deg,#f6edD6,#f6edD6 8px,#f1e6c8 8px,#f1e6c8 9px);
+  border:1.5px dashed var(--line); border-radius:12px; padding:8px 12px; display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:16px}
+.timeline .chip{background:#fff; border:1.5px solid var(--accent); color:var(--accent);
+  border-radius:20px; padding:6px 14px; font-size:13.5px; font-weight:700}
+.timeline .ph{color:#bbaa88; font-size:13px; font-style:italic}
+.pool{display:flex; flex-wrap:wrap; gap:10px}
+.frag{background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:12px 14px;
+  font-size:14px; line-height:1.5; cursor:pointer; transition:.16s; max-width:100%}
+.frag:hover{border-color:var(--accent); transform:translateY(-1px); box-shadow:0 6px 14px -8px rgba(60,44,20,.4)}
+.frag.wrong{animation:shake .3s; border-color:var(--bad)}
+@keyframes shake{25%{transform:translateX(-5px)}50%{transform:translateX(4px)}75%{transform:translateX(-3px)}}
+.frag:disabled{cursor:default; opacity:.35; transform:none; box-shadow:none; border-color:var(--line)}
+.fb{display:none; align-items:center; gap:10px; margin-top:16px; font-size:14px; padding:12px 16px; border-radius:10px}
+.fb.show{display:flex}
+.fb.ok{background:rgba(63,125,58,.1); border:1px solid rgba(63,125,58,.4); color:var(--ok)}
+.fb.bad{background:rgba(194,74,58,.1); border:1px solid rgba(194,74,58,.4); color:var(--bad)}
+.fb .btn{margin-left:auto; background:var(--accent); color:#fff7ea; border:none; padding:8px 16px; border-radius:9px; font-weight:700; cursor:pointer}
+.end{display:none; text-align:center; padding:40px 20px}
+.end.show{display:block}
+.end .tilt{font-size:60px}
+.end h2{font-size:28px; margin-bottom:8px}
+.end .stat{color:var(--soft); font-size:15px; margin:5px}
+.end .stat b{color:var(--accent)}
+.end .rerun{margin-top:20px; background:var(--accent); color:#fff7ea; border:none; padding:12px 24px; border-radius:11px; font-size:15px; font-weight:700; cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>时间侦探 <em>· 疑案时序</em></h1>
+    <div class="hud"><span>案 <b id="lvNow">1</b>/<span id="lvMax">6</span></span><span>分 <b id="score">0</b></span></div>
+  </div>
+  <div class="track">
+    <div class="rail"></div><div class="fill" id="bar"></div>
+    <div id="dots"></div>
+  </div>
+
+  <div class="case" id="case">
+    <h2 id="qTitle"></h2>
+    <div class="hint" id="hint">按顺序点出「下一个发生的事件」，拼回完整真相。</div>
+    <div class="timeline" id="timeline"><span class="ph">← 时间线进度（从最早开始）</span></div>
+    <div class="pool" id="pool"></div>
+    <div class="fb" id="fb"><span id="fbTxt"></span><button class="btn" id="nextBtn">下一案 →</button></div>
+  </div>
+
+  <div class="case end" id="endCard">
+    <div class="tilt">🕵️</div>
+    <h2 id="endTitle"></h2>
+    <div class="stat">总分 <b id="endScore">0</b> · 零失误案件 <b id="clean">0</b> 起</div>
+    <div class="stat" id="endSub"></div>
+    <button class="rerun" onclick="reset()">↺ 重翻旧案</button>
+  </div>
+</div>
+
+<script>
+const CASES=[
+ {t:"巷口失物", ev:["邮差在巷口掉了蓝色信封","店主捡到并挡在柜台","失主傍晚回店认领","店员核对到信封里的船票"]},
+ {t:"钟楼停摆", ev:["整点报时的铃扣松落","钟摆先停、分针慢走","夜班值守听见一声闷响","次日清晨才有人报修"]},
+ {t:"未寄出的信", ev:["作者写下最后一段落","墨迹未干被合进抽屉","信纸折成三折贴上邮票","十个月后才被再次打开"]},
+ {t:"假钞的旅行", ev:["老板找零时收进最大面额","顾客用它在小摊买了袋干粮","摊主当晚结账发现异常","次日把它交给银行查验"]},
+ {t:"雨停以后", ev:["雨点落在干透的柏油路","积水从低洼排水口退去","一对鞋印在浅水塘边成型","夕阳把水洼晒成小镜面"]},
+ {t:"深夜来客", ev:["电话在客厅先响了一声","门外传来三下敲门","来人轻声自报姓名","窗台蜡烛被风吹得摇曳"]}
+];
+let idx=0,score=0,cursor=0,cleanRun=true,cleanStash=0,over=false;
+const $=id=>document.getElementById(id);
+
+function initDots(){
+  const d=$("dots"); d.innerHTML="";
+  for(let i=0;i<CASES.length;i++){
+    const s=document.createElement("div");
+    s.className="dot"+(i<=idx?" on":""); s.style.left=Math.round(i/(CASES.length-1)*100)+"%";
+    d.appendChild(s);
+  }
+}
+function render(){
+  if(over)return;
+  const C=CASES[idx]; cursor=0; cleanRun=true;
+  $("lvNow").textContent=idx+1; $("qTitle").textContent=C.t; $("score").textContent=score;
+  $("bar").style.width=Math.round(idx/CASES.length*100)+"%"; initDots();
+  $("timeline").innerHTML='<span class="ph">← 按发生先后，从最早点起</span>';
+  const order=[...C.ev.keys()].sort(()=>Math.random()-.5);
+  const pool=$("pool"); pool.innerHTML="";
+  order.forEach(pos=>{
+    const f=document.createElement("div"); f.className="frag"; f.textContent=C.ev[pos];
+    f.onclick=()=>clickFrag(pos,f); pool.appendChild(f);
+  });
+  $("fb").className="fb";
+}
+function clickFrag(pos,el){
+  const C=CASES[idx];
+  if(pos===cursor){
+    cursor++; score+=50;
+    const chip=document.createElement("div"); chip.className="chip"; chip.textContent=C.ev[pos];
+    el.disabled=true;
+    const tl=$("timeline");
+    if(tl.querySelector(".ph")) tl.innerHTML="";
+    tl.appendChild(chip);
+    $("score").textContent=score;
+    if(cursor>=C.ev.length) setTimeout(done,220);
+  }else{
+    el.classList.add("wrong"); setTimeout(()=>el.classList.remove("wrong"),300);
+    cleanRun=false; score=Math.max(0,score-15); $("score").textContent=score;
+  }
+}
+function done(){
+  const fb=$("fb");
+  if(cleanRun){ cleanStash++; score+=50; fb.className="fb show ok"; $("fbTxt").textContent="✔ 事件一次归位，零失误 +50！"; }
+  else{ fb.className="fb show bad"; $("fbTxt").textContent="✘ 有顺序拿捏失误，线索已扣分。"; }
+  $("nextBtn").textContent = idx<CASES.length-1 ? "下一案 →" : "看结案 →";
+  $("score").textContent=score;
+}
+$("nextBtn").onclick=()=>{ if(idx<CASES.length-1){ idx++; render(); } else finish(); };
+function finish(){
+  over=true; $("bar").style.width="100%";
+  $("case").style.display="none";
+  const e=$("endCard"); e.className="case end show";
+  $("endScore").textContent=score; $("clean").textContent=cleanStash;
+  $("endTitle").textContent = score>700?"首席时间侦探":score>450?"资深取证官":"见习笔录员";
+  $("endSub").textContent="全部六案已收卷 · 累计零失误 "+cleanStash+" 起";
+}
+function reset(){ idx=0;score=0;cursor=0;cleanRun=true;cleanStash=0;over=false;
+  $("case").style.display=""; $("endCard").className="case end"; render(); }
+initDots(); render();
+</script>
+</body>
+</html>
